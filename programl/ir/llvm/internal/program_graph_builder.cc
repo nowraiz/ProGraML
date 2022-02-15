@@ -33,7 +33,7 @@
 #include "programl/graph/features.h"
 #include "programl/ir/llvm/internal/text_encoder.h"
 #include "programl/proto/program_graph.pb.h"
-
+#include <sstream>
 using labm8::Status;
 
 namespace programl {
@@ -43,7 +43,7 @@ namespace internal {
 
 labm8::StatusOr<BasicBlockEntryExit> ProgramGraphBuilder::VisitBasicBlock(
     const ::llvm::BasicBlock& block, const Function* functionMessage, InstructionMap* instructions,
-    ArgumentConsumerMap* argumentConsumers, std::vector<DataEdge>* dataEdgesToAdd) {
+    ArgumentConsumerMap* argumentConsumers, std::vector<DataEdge>* dataEdgesToAdd, unsigned int bbIndex) {
   if (!block.size()) {
     return Status(labm8::error::Code::FAILED_PRECONDITION, "Basic block contains no instructions");
   }
@@ -52,11 +52,12 @@ labm8::StatusOr<BasicBlockEntryExit> ProgramGraphBuilder::VisitBasicBlock(
   Node* lastNode = nullptr;
 
   // Iterate over the instructions of a basic block in-order.
+  unsigned int insIndex = 0;
   for (const ::llvm::Instruction& instruction : block) {
     const LlvmTextComponents text = textEncoder_.Encode(&instruction);
 
     // Create the graph node for the instruction.
-    auto instructionMessage = AddLlvmInstruction(&instruction, functionMessage);
+    auto instructionMessage = AddLlvmInstruction(&instruction, functionMessage, bbIndex, insIndex);
 
     // Record the instruction in the function-level instructions map.
     instructions->insert({&instruction, instructionMessage});
@@ -160,6 +161,7 @@ labm8::StatusOr<BasicBlockEntryExit> ProgramGraphBuilder::VisitBasicBlock(
       firstNode = instructionMessage;
     }
     lastNode = instructionMessage;
+    insIndex++;
   }
 
   ++blockCount_;
@@ -194,11 +196,13 @@ labm8::StatusOr<FunctionEntryExits> ProgramGraphBuilder::VisitFunction(
 
   // Visit all basic blocks in the function to construct the per-block graph
   // components.
+  unsigned int idx = 0;
   for (const ::llvm::BasicBlock& block : function) {
     BasicBlockEntryExit entryExit;
     ASSIGN_OR_RETURN(entryExit, VisitBasicBlock(block, functionMessage, &instructions,
-                                                &argumentConsumers, &dataEdgesToAdd));
+                                                &argumentConsumers, &dataEdgesToAdd, idx));
     blocks.insert({&block, entryExit});
+    idx++;
   }
   if (!blocks.size()) {
     return Status(labm8::error::Code::FAILED_PRECONDITION, "Function contains no basic blocks: {}",
@@ -297,11 +301,15 @@ Status ProgramGraphBuilder::AddCallSite(const Node* source, const FunctionEntryE
 }
 
 Node* ProgramGraphBuilder::AddLlvmInstruction(const ::llvm::Instruction* instruction,
-                                              const Function* function) {
+                                              const Function* function, unsigned int bbIndex,
+                                              unsigned int insIndex) {
   const LlvmTextComponents text = textEncoder_.Encode(instruction);
   Node* node = AddInstruction(text.opcode_name, function);
   node->set_block(blockCount_);
   graph::AddScalarFeature(node, "full_text", text.text);
+  std::stringstream canonical_name;
+  canonical_name << instruction->getFunction()->getName().str() << "-" << bbIndex << "-" << insIndex;
+  graph::AddScalarFeature(node, "canonical_name", canonical_name.str());
 
 #if PROGRAML_LLVM_VERSION_MAJOR > 3
   // Add profiling information features, if available.

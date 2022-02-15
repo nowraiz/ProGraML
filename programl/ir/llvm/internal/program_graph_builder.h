@@ -77,11 +77,12 @@ class ProgramGraphBuilder : public programl::graph::ProgramGraphBuilder {
   [[nodiscard]] labm8::StatusOr<BasicBlockEntryExit> VisitBasicBlock(
       const ::llvm::BasicBlock& block, const Function* functionMessage,
       InstructionMap* instructionMap, ArgumentConsumerMap* argumentConsumers,
-      std::vector<DataEdge>* dataEdgesToAdd);
+      std::vector<DataEdge>* dataEdgesToAdd, unsigned int bbIndex);
 
   [[nodiscard]] labm8::Status AddCallSite(const Node* source, const FunctionEntryExits& target);
 
-  Node* AddLlvmInstruction(const ::llvm::Instruction* instruction, const Function* function);
+  Node* AddLlvmInstruction(const ::llvm::Instruction* instruction, const Function* function,
+                            unsigned int, unsigned int);
   Node* AddLlvmVariable(const ::llvm::Instruction* operand, const Function* function);
   Node* AddLlvmVariable(const ::llvm::Argument* argument, const Function* function);
   Node* AddLlvmConstant(const ::llvm::Constant* constant);
