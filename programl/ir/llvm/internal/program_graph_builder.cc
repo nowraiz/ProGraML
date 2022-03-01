@@ -57,7 +57,7 @@ labm8::StatusOr<BasicBlockEntryExit> ProgramGraphBuilder::VisitBasicBlock(
     const LlvmTextComponents text = textEncoder_.Encode(&instruction);
 
     // Create the graph node for the instruction.
-    auto instructionMessage = AddLlvmInstruction(&instruction, functionMessage, bbIndex, insIndex);
+    auto instructionMessage = AddLlvmInstruction(&instruction, functionMessage, block.getName(), insIndex);
 
     // Record the instruction in the function-level instructions map.
     instructions->insert({&instruction, instructionMessage});
@@ -301,14 +301,14 @@ Status ProgramGraphBuilder::AddCallSite(const Node* source, const FunctionEntryE
 }
 
 Node* ProgramGraphBuilder::AddLlvmInstruction(const ::llvm::Instruction* instruction,
-                                              const Function* function, unsigned int bbIndex,
+                                              const Function* function, std::string bbName,
                                               unsigned int insIndex) {
   const LlvmTextComponents text = textEncoder_.Encode(instruction);
   Node* node = AddInstruction(text.opcode_name, function);
   node->set_block(blockCount_);
   graph::AddScalarFeature(node, "full_text", text.text);
   std::stringstream canonical_name;
-  canonical_name << instruction->getFunction()->getName().str() << "-" << bbIndex << "-" << insIndex;
+  canonical_name << instruction->getFunction()->getName().str() << bbName << "-" << insIndex;
   graph::AddScalarFeature(node, "canonical_name", canonical_name.str());
 
 #if PROGRAML_LLVM_VERSION_MAJOR > 3

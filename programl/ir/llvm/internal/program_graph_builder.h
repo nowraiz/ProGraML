@@ -82,7 +82,7 @@ class ProgramGraphBuilder : public programl::graph::ProgramGraphBuilder {
   [[nodiscard]] labm8::Status AddCallSite(const Node* source, const FunctionEntryExits& target);
 
   Node* AddLlvmInstruction(const ::llvm::Instruction* instruction, const Function* function,
-                            unsigned int, unsigned int);
+                            std::string bbName, unsigned int);
   Node* AddLlvmVariable(const ::llvm::Instruction* operand, const Function* function);
   Node* AddLlvmVariable(const ::llvm::Argument* argument, const Function* function);
   Node* AddLlvmConstant(const ::llvm::Constant* constant);
