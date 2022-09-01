@@ -177,3 +177,9 @@ paper](https://chriscummins.cc/pub/2021-icml.pdf):
   year={2021}
 }
 ```
+
+# PrograML modifications
+
+Programl takes in a bitcode file (or ir file) and generates the program graph. What we needed to do machine learning on this graph was to identify nodes of instruction using their canonical-name. Because that is the only thing we have when we represent path outside LLVM infrastructure e.g. when dumping training data or enumerating paths. So that's the only thing changed in PrograML. When programl runs the custom pass to generate nodes for each of the instruction, we add its canonical name as a feature on the node itself. We then use this feature while using this program graph in machine learning pipeline to identify instruction and get its embedding while model inference.
+
+The code for this functionality is added in `programl/ir/llvm/internal/program_graph_builder.cc` by changing the `ProgramGraphBuilder::AddLlvmInstruction()` function.
